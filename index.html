@@ -906,7 +906,7 @@ function renderTable(data) {
       <td>${deadlineHTML(p.end)}</td>
       <td>${progressHTML(p.progress)}</td>
       <td>${priorityHTML(p.priority)}</td>
-      <td><span style="font-size:.78rem;color:var(--ink2);max-width:200px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${p.note}">${p.note||'—'}</span></td>
+<td><div style="font-size:.78rem; color:var(--ink2); min-width:200px; word-wrap: break-word; white-space: normal;">${p.note||'—'}</div></td>
     </tr>
   `).join('');
 }
@@ -988,31 +988,21 @@ function renderPeople() {
   const map = {};
   allProjects.forEach(p => {
     if (!p.assign) return;
-    if (!map[p.assign]) map[p.assign] = { name: p.assign, dept: p.dept, projects: [] };
-    map[p.assign].projects.push(p);
+    
+    // Tách tên dựa trên dấu phẩy (,) hoặc dấu cộng (+)
+    const names = p.assign.split(/[,+]/).map(n => n.trim()).filter(n => n !== "");
+    
+    names.forEach(name => {
+      if (!map[name]) map[name] = { name: name, dept: p.dept, projects: [] };
+      map[name].projects.push(p);
+    });
   });
 
+  // Giữ nguyên phần render HTML bên dưới của bạn...
   document.getElementById('people-grid').innerHTML = Object.values(map).map(m => {
-    const doing = m.projects.filter(p => p.status === 'Đang thực hiện').length;
-    const done  = m.projects.filter(p => p.status === 'Hoàn thành').length;
-    const late  = m.projects.filter(p => p.status === 'Trễ hạn').length;
-    return `
-      <div class="person-card">
-        <div class="person-avatar" style="background:${avatarColor(m.name)}">${initials(m.name)}</div>
-        <div class="person-name">${m.name}</div>
-        <div class="person-dept">${m.dept||'—'}</div>
-        <div class="person-count">${m.projects.length}</div>
-        <div class="person-count-label">dự án</div>
-        <div style="margin-top:.6rem;display:flex;gap:.3rem;justify-content:center;flex-wrap:wrap">
-          ${doing ? `<span class="badge badge-blue">⏳ ${doing}</span>` : ''}
-          ${done  ? `<span class="badge badge-green">✅ ${done}</span>` : ''}
-          ${late  ? `<span class="badge badge-red">⚠️ ${late}</span>` : ''}
-        </div>
-      </div>
-    `;
+    // ... code render cũ ...
   }).join('');
 }
-
 // ── TAB SWITCH ──
 function switchTab(id, btn) {
   document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
