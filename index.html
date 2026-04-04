@@ -984,25 +984,28 @@ function renderKanban() {
 }
 
 // ── PEOPLE ──
-function renderPeople() {
-  const map = {};
-  allProjects.forEach(p => {
-    if (!p.assign) return;
-    
-    // Tách tên dựa trên dấu phẩy (,) hoặc dấu cộng (+)
-    const names = p.assign.split(/[,+]/).map(n => n.trim()).filter(n => n !== "");
-    
-    names.forEach(name => {
-      if (!map[name]) map[name] = { name: name, dept: p.dept, projects: [] };
-      map[name].projects.push(p);
-    });
-  });
-
-  // Giữ nguyên phần render HTML bên dưới của bạn...
+function renderPeople() { const map = {}; allProjects.forEach(p => { if (!p.assign) return; // Tách tên dựa trên dấu phẩy (,) hoặc dấu cộng (+) const names = p.assign.split(/[,+]/).map(n => n.trim()).filter(n => n !== ""); names.forEach(name => { if (!map[name]) map[name] = { name: name, dept: p.dept, projects: [] }; map[name].projects.push(p); }); });
   document.getElementById('people-grid').innerHTML = Object.values(map).map(m => {
-    // ... code render cũ ...
+    const doing = m.projects.filter(p => p.status === 'Đang thực hiện').length;
+    const done  = m.projects.filter(p => p.status === 'Hoàn thành').length;
+    const late  = m.projects.filter(p => p.status === 'Trễ hạn').length;
+    return `
+      <div class="person-card">
+        <div class="person-avatar" style="background:${avatarColor(m.name)}">${initials(m.name)}</div>
+        <div class="person-name">${m.name}</div>
+        <div class="person-dept">${m.dept||'—'}</div>
+        <div class="person-count">${m.projects.length}</div>
+        <div class="person-count-label">dự án</div>
+        <div style="margin-top:.6rem;display:flex;gap:.3rem;justify-content:center;flex-wrap:wrap">
+          ${doing ? `<span class="badge badge-blue">⏳ ${doing}</span>` : ''}
+          ${done  ? `<span class="badge badge-green">✅ ${done}</span>` : ''}
+          ${late  ? `<span class="badge badge-red">⚠️ ${late}</span>` : ''}
+        </div>
+      </div>
+    `;
   }).join('');
 }
+
 // ── TAB SWITCH ──
 function switchTab(id, btn) {
   document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
