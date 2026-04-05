@@ -106,7 +106,7 @@
   .p-thap .priority-dot { background: var(--green); }
 
   /* PROGRESS */
-  .progress-wrap { min-width: 100px; }
+  .progress-wrap { min-width: 80px; }
   .progress-bar-bg { height: 6px; background: #E5E7EB; border-radius: 999px; overflow: hidden; margin-top: .3rem; }
   .progress-bar-fill { height: 100%; border-radius: 999px; transition: width .6s ease; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
   .progress-bar-fill.done   { background: linear-gradient(90deg, var(--green), #22d3a8); }
@@ -122,38 +122,8 @@
   .deadline.overdue { color: var(--accent); font-weight: 600; }
   .deadline.soon    { color: var(--yellow); font-weight: 600; }
 
-  /* ── FIX 1: GHI CHÚ — expandable note cell ── */
-  .note-cell {
-    font-size: .78rem;
-    color: var(--ink2);
-    max-width: 220px;
-    position: relative;
-  }
-  .note-text {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    line-height: 1.45;
-    cursor: default;
-    transition: all .2s;
-  }
-  .note-cell:hover .note-text {
-    -webkit-line-clamp: unset;
-    overflow: visible;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: .4rem .6rem;
-    box-shadow: 0 4px 16px rgba(13,13,20,.12);
-    position: absolute;
-    top: 0; left: 0;
-    z-index: 50;
-    min-width: 200px;
-    max-width: 320px;
-    white-space: normal;
-    word-break: break-word;
-  }
+  /* Ghi chú: inline wrap */
+  .note-inline { font-size: .78rem; color: var(--ink2); max-width: 200px; line-height: 1.4; word-break: break-word; }
 
   /* EMPTY STATE */
   .empty-state { text-align: center; padding: 4rem 2rem; color: var(--ink2); }
@@ -283,11 +253,10 @@
                 <th onclick="sortTable(2)">Phòng Ban</th>
                 <th onclick="sortTable(3)">Người Thực Hiện</th>
                 <th onclick="sortTable(4)">Trạng Thái</th>
-                <th onclick="sortTable(5)">Bắt Đầu</th>
-                <th onclick="sortTable(6)">Hạn Chót</th>
-                <th onclick="sortTable(7)">Tiến Độ</th>
-                <th onclick="sortTable(9)">Ưu Tiên</th>
+                <th onclick="sortTable(5)">Hạn Chót</th>
+                <th onclick="sortTable(6)">Tiến Độ</th>
                 <th>Ghi Chú</th>
+                <th onclick="sortTable(7)">Ưu Tiên</th>
               </tr>
             </thead>
             <tbody id="table-body"></tbody>
@@ -316,9 +285,18 @@ function avatarColor(name) {
   for (const c of (name || 'X')) h = (h * 31 + c.charCodeAt(0)) & 0xFFFFFFFF;
   return COLORS[Math.abs(h) % COLORS.length];
 }
+// Lấy 2 chữ cái đầu của 2 TỪ CUỐI (Nguyễn Lê Bảo Ngọc → BN, Nguyễn Bá Lê Dũng → LD)
 function initials(name) {
   if (!name) return '?';
-  return name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase();
+  const words = name.trim().split(/\s+/);
+  const last2 = words.slice(-2);
+  return last2.map(w => w[0]).join('').toUpperCase();
+}
+// Lấy 2 từ cuối để hiển thị tên ngắn (Nguyễn Lê Bảo Ngọc → Bảo Ngọc)
+function shortName(name) {
+  if (!name) return '—';
+  const words = name.trim().split(/\s+/);
+  return words.slice(-2).join(' ');
 }
 
 // ── FIX 2: Helper tách tên nhiều người ──
@@ -501,41 +479,42 @@ function deadlineHTML(dateStr) {
   return `<span class="deadline">${label}</span>`;
 }
 
+// ── Tiến độ compact ──
 function progressHTML(pct) {
   const p   = Math.max(0, Math.min(100, parseFloat(pct) || 0));
   const cls = p === 100 ? 'done' : p >= 50 ? '' : 'medium';
   return `<div class="progress-wrap">
     <div class="progress-label">${p}%</div>
-    <div class="progress-bar-bg"><div class="progress-bar-fill ${cls}" style="width:${p}%"></div></div>
+    <div class="progress-bar-bg" style="width:72px"><div class="progress-bar-fill ${cls}" style="width:${p}%"></div></div>
   </div>`;
 }
 
-// ── FIX 1: Ghi chú expandable on hover ──
+// Ghi chú: hiển thị inline, wrap 2 dòng, không cần hover
 function noteHTML(note) {
   if (!note) return '<span style="color:var(--ink2);font-size:.78rem">—</span>';
-  const escaped = note.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  return `<div class="note-cell"><div class="note-text">${escaped}</div></div>`;
+  const escaped = note.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return `<span style="font-size:.78rem;color:var(--ink2);line-height:1.4;display:block;max-width:200px;word-break:break-word;white-space:normal">${escaped}</span>`;
 }
 
-// ── FIX 2: Assignee với avatars cho nhiều người ──
+// ── Assignee với avatars + tên ngắn (2 từ cuối) ──
 function assigneeHTML(assignStr) {
   const people = splitAssignees(assignStr);
   if (!people.length) return '<span style="font-size:.85rem;color:var(--ink2)">—</span>';
   if (people.length === 1) {
     return `<div class="assignee">
       <div class="avatar" style="background:${avatarColor(people[0])}">${initials(people[0])}</div>
-      <span style="font-size:.85rem">${people[0]}</span>
+      <span style="font-size:.85rem">${shortName(people[0])}</span>
     </div>`;
   }
-  // Nhiều người: hiện tối đa 3 avatars + tên
   const avatars = people.slice(0,3).map(p =>
     `<div class="avatar" style="background:${avatarColor(p)};margin-left:-6px;border:2px solid var(--panel)" title="${p}">${initials(p)}</div>`
   ).join('');
   const extra = people.length > 3 ? `<span style="font-size:.7rem;color:var(--ink2)">+${people.length-3}</span>` : '';
-  const names = people.join(', ');
-  return `<div class="assignee" title="${names}">
+  const shortNames = people.map(p => shortName(p)).join(', ');
+  const fullNames = people.join(', ');
+  return `<div class="assignee" title="${fullNames}">
     <div style="display:flex;align-items:center">${avatars}${extra}</div>
-    <span style="font-size:.78rem;color:var(--ink2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${names}</span>
+    <span style="font-size:.78rem;color:var(--ink2)">${shortNames}</span>
   </div>`;
 }
 
@@ -545,7 +524,7 @@ function renderTable(data) {
   document.getElementById('row-count').textContent = `${data.length} dự án`;
   const tbody = document.getElementById('table-body');
   if (!data.length) {
-    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><div class="icon">🔍</div><p>Không tìm thấy dự án phù hợp</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="icon">🔍</div><p>Không tìm thấy dự án phù hợp</p></div></td></tr>`;
     return;
   }
   tbody.innerHTML = data.map(p => `
@@ -555,11 +534,10 @@ function renderTable(data) {
       <td><span style="font-size:.8rem;color:var(--ink2)">${p.dept||'—'}</span></td>
       <td>${assigneeHTML(p.assign)}</td>
       <td>${statusBadge(p.status)}</td>
-      <td><span style="font-size:.82rem;color:var(--ink2)">${formatDate(p.start)}</span></td>
       <td>${deadlineHTML(p.end)}</td>
       <td>${progressHTML(p.progress)}</td>
-      <td>${priorityHTML(p.priority)}</td>
       <td>${noteHTML(p.note)}</td>
+      <td>${priorityHTML(p.priority)}</td>
     </tr>`).join('');
 }
 
